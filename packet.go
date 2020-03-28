@@ -139,6 +139,7 @@ type Packet struct {
 	Range    float64 // Miles
 	Symbol   Symbol
 	Comment  string
+	Status   string
 	data     string // Unparsed data
 }
 
@@ -341,9 +342,19 @@ func (p *Packet) parseMicEData() error {
 		return nil
 	}
 
+	// Status text
+	i := 10
+	if s[i] == '>' || s[i] == ']' {
+		i++ // Kenwood radios have an extra character here.
+	}
+	p.Status = s[i:]
+	// Strip off yaesu trailing underscore?
+	if p.Status[len(p.Status)-1] == '_' {
+		p.Status = p.Status[:len(p.Status)-1]
+	}
+
 	// Parse MicE Status Text data.
 	// TODO: Parse additional data in the Status Text data:
-	// - Actual (custom) text message
 	// - Maidenhead locator
 	// - Altitude
 
