@@ -439,3 +439,21 @@ func (p Payload) Time() (time.Time, error) {
 		return time.Time{}, nil
 	}
 }
+
+const ackPrefix = ":ack"
+
+func (p *Packet) IsAck() bool {
+	return strings.HasPrefix(p.data, ackPrefix)
+}
+
+func (p *Packet) AckNumber() (int, error) {
+	if !p.IsAck() {
+		return 0, errors.New("not an ack")
+	}
+	ns := strings.TrimPrefix(p.data, ackPrefix)
+	i, err := strconv.ParseInt(ns, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse ack number: %v", err)
+	}
+	return int(i), nil
+}
