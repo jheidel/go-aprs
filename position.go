@@ -83,7 +83,10 @@ type Position struct {
 	Compressed bool
 }
 
-func (pos Position) String() string {
+func (pos *Position) String() string {
+	if pos == nil {
+		return "<nil>"
+	}
 	if pos.Ambiguity == 0 {
 		return fmt.Sprintf("{%f, %f}", pos.Latitude, pos.Longitude)
 	}

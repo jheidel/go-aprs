@@ -124,23 +124,24 @@ func (o OmniDFStrength) Directivity() float64 {
 }
 
 type Packet struct {
-	Raw      string
-	Src      *Address
-	Dst      *Address
-	Path     Path
-	Payload  Payload
-	Position *Position
-	Time     *time.Time
-	Altitude float64 // Feet
-	Velocity Velocity
-	Wind     Wind
-	PHG      PowerHeightGain
-	DFS      OmniDFStrength
-	Range    float64 // Miles
-	Symbol   Symbol
-	Comment  string
-	Status   string
-	data     string // Unparsed data
+	Raw       string
+	Src       *Address
+	Dst       *Address
+	Path      Path
+	Payload   Payload
+	Position  *Position
+	Time      *time.Time
+	Altitude  float64 // Feet
+	Velocity  Velocity
+	Wind      Wind
+	PHG       PowerHeightGain
+	DFS       OmniDFStrength
+	Range     float64 // Miles
+	Symbol    Symbol
+	Comment   string
+	Message   string
+	MessageTo *Address
+	data      string // Unparsed data
 }
 
 func ParsePacket(raw string) (Packet, error) {
@@ -267,6 +268,19 @@ func (p *Packet) parse() error {
 		p.parseMicEData()
 
 		return nil // there is no additional data to parse
+	case ':': // aprs message
+		s = s[1:]
+		o := strings.IndexByte(s, ':')
+		if o < 0 {
+			return ErrInvalidPosition
+		}
+		var err error
+		p.MessageTo, err = ParseAddress(strings.TrimSpace(s[:o]))
+		if err != nil {
+			return err
+		}
+		p.Message = strings.TrimSpace(s[o+1:])
+		return nil // no additional data
 	default:
 		pos, txt, err := ParsePositionBoth(s)
 		if err != nil {
@@ -347,10 +361,10 @@ func (p *Packet) parseMicEData() error {
 	if s[i] == '>' || s[i] == ']' {
 		i++ // Kenwood radios have an extra character here.
 	}
-	p.Status = s[i:]
+	p.Message = s[i:]
 	// Strip off yaesu trailing underscore?
-	if p.Status[len(p.Status)-1] == '_' {
-		p.Status = p.Status[:len(p.Status)-1]
+	if p.Message[len(p.Message)-1] == '_' {
+		p.Message = p.Message[:len(p.Message)-1]
 	}
 
 	// Parse MicE Status Text data.
@@ -440,17 +454,17 @@ func (p Payload) Time() (time.Time, error) {
 	}
 }
 
-const ackPrefix = ":ack"
+const ackPrefix = "ack"
 
 func (p *Packet) IsAck() bool {
-	return strings.HasPrefix(p.data, ackPrefix)
+	return strings.HasPrefix(p.Message, ackPrefix)
 }
 
 func (p *Packet) AckNumber() (int, error) {
 	if !p.IsAck() {
 		return 0, errors.New("not an ack")
 	}
-	ns := strings.TrimPrefix(p.data, ackPrefix)
+	ns := strings.TrimPrefix(p.Message, ackPrefix)
 	i, err := strconv.ParseInt(ns, 10, 32)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse ack number: %v", err)
