@@ -1,6 +1,8 @@
 package aprs
 
 import (
+	"crypto/sha256"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"math"
@@ -142,6 +144,29 @@ type Packet struct {
 	Message   string
 	MessageTo *Address
 	data      string // Unparsed data
+}
+
+func (p *Packet) Hash() string {
+	// Pull out fields which define the fingerprint used. These are fields that
+	// are stable across duplicates.
+	// NOTE: we do *not* include Path, Payload, here since duplicate packets
+	// might propagate across the network via different paths and we still want
+	// to dedup these. We include a truncated version of time to allow for easier
+	// manual testing, and to avoid extreme deduping across dates.
+	fp := &Packet{
+		Src:       p.Src,
+		Dst:       p.Dst,
+		Position:  p.Position,
+		Comment:   p.Comment,
+		Message:   p.Message,
+		MessageTo: p.MessageTo,
+	}
+	h := sha256.New()
+	enc := gob.NewEncoder(h)
+	if err := enc.Encode(fp); err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func ParsePacket(raw string) (Packet, error) {
