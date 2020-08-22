@@ -149,13 +149,11 @@ type Packet struct {
 func (p *Packet) Hash() string {
 	// Pull out fields which define the fingerprint used. These are fields that
 	// are stable across duplicates.
-	// NOTE: we do *not* include Path, Payload, here since duplicate packets
+	// NOTE: we do *not* include Path, Payload, or Dst here since duplicate packets
 	// might propagate across the network via different paths and we still want
-	// to dedup these. We include a truncated version of time to allow for easier
-	// manual testing, and to avoid extreme deduping across dates.
+	// to dedup these.
 	fp := &Packet{
 		Src:       p.Src,
-		Dst:       p.Dst,
 		Position:  p.Position,
 		Comment:   p.Comment,
 		Message:   p.Message,
